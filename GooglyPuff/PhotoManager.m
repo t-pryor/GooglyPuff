@@ -19,7 +19,10 @@
 {
     static PhotoManager *sharedPhotoManager = nil;
     if (!sharedPhotoManager) {
+        [NSThread sleepForTimeInterval:2];
         sharedPhotoManager = [[PhotoManager alloc] init];
+        NSLog(@"Singleton has memory address at: %@", sharedPhotoManager);
+        [NSThread sleepForTimeInterval:2];
         sharedPhotoManager->_photosArray = [NSMutableArray array];
     }
 
