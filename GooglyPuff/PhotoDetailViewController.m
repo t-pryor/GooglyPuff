@@ -26,6 +26,29 @@ const CGFloat kFaceBoundsToEyeScaleFactor = 4.0f;
 #pragma mark - LifeCycle
 //*****************************************************************************/
 
+// use dispatch_async when you need to perform a network-based or CPU intensive
+// task in the background and not blcok the current thread
+
+/*
+ HOW AND WHEN TO USE THE VARIOUS QUEUES TYPES WITH dispatch_async
+ Custom Serial Queue
+ A good choice when you want to perform some background work serially and track it
+ Eliminates resource contention since you know only one task at a time is executing
+ If you need the data from a method, you must inline another block to retrieve it
+ or consider using dispatch_sync
+ 
+ *** Main Queue (Serial) ***
+ This is a common choice to update the UI after completing work in a task on a concurrent queue.
+ To do this, you code one block inside another
+ If you're in the main queue and call dispatch_async, you can guarantee this new task
+ will execute sometime after the current method finishes.
+ 
+ Condurrent Queue: common choice to perfrom non-UI work in the background
+ 
+ */
+
+
+
 - (void)viewDidLoad
 {
     [super viewDidLoad];
@@ -38,9 +61,21 @@ const CGFloat kFaceBoundsToEyeScaleFactor = 4.0f;
         [self.photoImageView setContentMode:UIViewContentModeCenter];
     }
     
-    UIImage *overlayImage = [self faceOverlayImageFromImage:_image];
-    [self fadeInNewImage:overlayImage];
+    // Move the work off the main thread and onto a global queue
+    // block is submitted asynchronously-execution of the calling thread continues
+    // lets viewDidLoad finish earlier on the main thread-loading time is faster
+    // face detection processing is started and will finish at some later time
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
+        UIImage *overlayImage = [self faceOverlayImageFromImage:_image];
+        // face detection processing is complete after preceeding line-new image generated
+    
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self fadeInNewImage:overlayImage];
+        });
+    });
 }
+
+
 
 //*****************************************************************************/
 #pragma mark - Public Methods
