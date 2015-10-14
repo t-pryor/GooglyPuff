@@ -215,10 +215,37 @@ UIActionSheetDelegate>
 }
 
 
+/*
+    DEMONSTRATES THE USE OF dispatch_after
+    dispatch_after works just like a delayed dispatch_async
+    You still have no control over the actual time of execution nor can you cancel once
+    dispatch_after returns
+ 
+    When is it appropriate to use?
+    Use caution when using dispatch_after on a custome serial queue
+    Should only use on the main queue
+    Rare to use on concurrent queues
+ 
+ */
+
+
 
 - (void)showOrHideNavPrompt
 {
-    // Implement me!
+    
+    NSUInteger count = [[PhotoManager sharedManager] photos].count;
+    double delayInSeconds = 1.0;
+    // declare variable that specifies amount of time to delay
+    dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delayInSeconds * NSEC_PER_SEC));
+    
+    // wait for the amount of time and then asynchronously add the block to the main queue
+    dispatch_after(popTime, dispatch_get_main_queue(), ^(void) {
+        if(!count) {
+            [self.navigationItem setPrompt:@"Add photos with faces to Googlyify them!"];
+        } else {
+            [self.navigationItem setPrompt:nil];
+        }
+    });
 }
 
 - (void)downloadImageAssets
