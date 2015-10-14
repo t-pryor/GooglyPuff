@@ -18,15 +18,21 @@
 + (instancetype)sharedManager
 {
     static PhotoManager *sharedPhotoManager = nil;
-    if (!sharedPhotoManager) {
-        [NSThread sleepForTimeInterval:2];
-        sharedPhotoManager = [[PhotoManager alloc] init];
-        NSLog(@"Singleton has memory address at: %@", sharedPhotoManager);
-        [NSThread sleepForTimeInterval:2];
-        sharedPhotoManager->_photosArray = [NSMutableArray array];
-    }
-
-    return sharedPhotoManager;
+    static dispatch_once_t onceToken;
+    
+    // dispatch_once executes a block and only once, in a thread-safe manner
+    // different threads that try to access the critical section (the code passed into dispatch_once)
+    // while a thread is already in this section are blocked until the critical section completes
+    
+     dispatch_once(&onceToken, ^{
+         sharedPhotoManager = [[PhotoManager alloc] init];
+         sharedPhotoManager->_photosArray = [NSMutableArray array];
+             
+         //why not sharedPhotoManager.photosArray?
+         // http://stackoverflow.com/questions/15439623/when-where-the-arrow-notation-should-be-used-in-objective-c
+     });
+     return sharedPhotoManager;
+    
 }
 
 //*****************************************************************************/

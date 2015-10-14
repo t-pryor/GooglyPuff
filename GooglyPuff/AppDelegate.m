@@ -12,17 +12,6 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-    // Create multiple asynchronous concurrent calls to instantiate the singleton and
-    // invoke a race condition
-    
-    
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
-        [PhotoManager sharedManager];
-    });
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
-        [PhotoManager sharedManager];
-    });
     
     [[UINavigationBar appearance] setBarStyle:UIBarStyleBlackTranslucent];
     return YES;
