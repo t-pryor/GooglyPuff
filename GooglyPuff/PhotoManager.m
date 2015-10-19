@@ -10,7 +10,9 @@
 #import "PhotoManager.h"
 
 @interface PhotoManager ()
-@property (nonatomic, strong) NSMutableArray *photosArray;
+
+@property (nonatomic, strong, readonly) NSMutableArray *photosArray;
+@property (nonatomic, strong) dispatch_queue_t concurrentPhotoQueue;
 @end
 
 @implementation PhotoManager
@@ -30,7 +32,11 @@
              
          //why not sharedPhotoManager.photosArray?
          // http://stackoverflow.com/questions/15439623/when-where-the-arrow-notation-should-be-used-in-objective-c
+         
+         sharedPhotoManager->_concurrentPhotoQueue = dispatch_queue_create("com.selander.GooglyPuff.photoQueue", DISPATCH_QUEUE_CONCURRENT);
+         
      });
+    
      return sharedPhotoManager;
     
 }
@@ -39,17 +45,83 @@
 #pragma mark - Unsafe Setter/Getters
 //*****************************************************************************/
 
+// READERS-WRITERS PROBLEM
+
+
+/* 
+    BARRIER FUNCTIONS
+    
+    *Custom Serial Queue*
+    Barriers won't do anything helpful since a serial queue executes
+    one op at a time anyway
+ 
+    *Global Concurrent Queue*
+    Probably not the best idea to use here since other systes might
+    be using the queues and you don't want to monopolize them for 
+    your own purposes
+ 
+    *Custom Concurrent Queue*
+    Great choice for atomic or critical areas of code
+    Anything you're setting or instantiating that needs to be
+    thread safe is a great choice for a barrier
+ 
+ 
+ 
+ */
+
+/*
+    WHERE AND WHEN TO USE dispatch_sync
+ 
+    *Custom Serial Queue*
+    Be careful: if you're running in a queue and call dispatch_sync targeting
+    the same queue, you will definitely create a deadlock
+ 
+    *Main Queue (Serial)
+    Be careful: can cause deadlock-same reasons as above
+ 
+    *Concurrent Queue: Good candidate to sync work through
+    dispatch barriers or when waiting for a task to complete
+    so you can perform further processing
+ 
+ 
+ 
+ 
+ 
+ */
+
 - (NSArray *)photos
 {
-    return _photosArray;
+    
+    
+    //__block variable written outside dispatch_sync scope in order to use
+    // the processed object returned outside the dispatch_sync function
+    __block NSArray *array;
+    
+    
+    // to ensure thread safety with the writer, you need to perform the
+    // read on the concurrentPhotoQueue
+    // need to return from the function, so you can't dispatch asynchronously
+    // return
+    dispatch_sync(self.concurrentPhotoQueue, ^{
+        array = [NSArray arrayWithArray:_photosArray];
+    });
+    
+    return array;
+    
 }
 
 - (void)addPhoto:(Photo *)photo
 {
     if (photo) {
-        [_photosArray addObject:photo];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self postContentAddedNotification];
+        // add the write operation using your custom queue
+        dispatch_barrier_async(self.concurrentPhotoQueue, ^{
+            // this block will never run simultaneously with any other block in concurrentPhotoQueue
+            [_photosArray addObject:photo];
+            
+            // post a notification that you've added the image on the main thread (UI)
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self postContentAddedNotification];
+            });
         });
     }
 }

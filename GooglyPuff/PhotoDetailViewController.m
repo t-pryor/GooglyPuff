@@ -52,6 +52,8 @@ const CGFloat kFaceBoundsToEyeScaleFactor = 4.0f;
 - (void)viewDidLoad
 {
     [super viewDidLoad];
+    
+    
     NSAssert(_image, @"Image not set; required to use view controller");
     self.photoImageView.image = _image;
     
