@@ -130,14 +130,34 @@
 #pragma mark - Public Methods
 //*****************************************************************************/
 
+/*
+    DISPATCH GROUPS
+    
+    *Custom Serial Queue*
+    A good candidate for notifications when a group of tasks completes
+ 
+    *Main Queue (Serial)*
+    Also good candidate.
+    Should be wary though if you are waiting synchronously for the completion of
+    all work since you don't want to hold up the main thread.
+    Asynchronous model is an attractive way to update the UI once several long-running
+    tasks finish such as network calls
+    
+    *Concurrent Queue*
+    Also good candidate for dispatch groups and completion notifications
+ 
+ */
+
+
+
 - (void)downloadPhotosWithCompletionBlock:(BatchPhotoDownloadingCompletionBlock)completionBlock
 {
-    // since you're using the synchronous dispatch_group_wait which blocks the current
-    // thread, you use dispatch_async to place the entire method into a background
-    // queue to ensure you don't block the main thread
+   
+   // don't need to use dispatch_async to place method into background queue
+   // since we don' use  dispatch_group_wait
+   // dispatch_group_notify serves as the asynchronous completion block
     
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
-        __block NSError *error;
+    __block NSError *error;
         
         // dispatch groups notify you when an entire group of tasks completes
         // creates a new dispatch group which behaves like
@@ -188,16 +208,20 @@
         // a non-zero result
         // if you reach this point, you've exited the for loop, so completion
         // of the photos creation will always complete
-        dispatch_group_wait(downloadGroup, DISPATCH_TIME_FOREVER);
-        
-        
-        dispatch_async(dispatch_get_main_queue(), ^{
+       // dispatch_group_wait(downloadGroup, DISPATCH_TIME_FOREVER);
+    
+    
+        // serves as the aynchronous completion block
+        // this code executes when there are no more items left in the dispatch group
+        // and it's the completion block's turn to run
+        // you also specify which queue to run your completion code
+        dispatch_group_notify(downloadGroup, dispatch_get_main_queue(), ^{
             if (completionBlock) {
                 // completionBlock executes a UIAlert indicating that images have completed downloading
                 completionBlock(error);
             }
         });
-    });
+
 
 }
 
