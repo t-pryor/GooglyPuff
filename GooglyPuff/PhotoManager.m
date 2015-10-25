@@ -166,7 +166,16 @@
         
         dispatch_group_t downloadGroup = dispatch_group_create();
     
-        for (NSInteger i = 0; i < 3; i++) {
+        // dispatch_apply acts as a for loop which executes different iterations concurrently
+        // function is synchronous, so returns only when all work is done (like for loop)
+        // should only use with concurrent queue
+    
+        // this is for example purposes only
+        // probably created more overhead running the threads in paralle than just running the for loop
+        // you should use dispatch_apply for iterating over very large sets along with
+        //  appropriate stride length
+        dispatch_apply(3, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^(size_t i) {
+            
             NSURL *url;
             switch (i) {
                 case 0:
@@ -181,6 +190,9 @@
                 default:
                     break;
             }
+            
+        
+       
         
     
             // this manually notifies the group that this work is done
@@ -202,7 +214,7 @@
         
             [[PhotoManager sharedManager] addPhoto:photo];
         
-        }
+        });
         // Waits until either all the tasks are complete or until the time expires
         // If time expires before all events complete, the function will return a
         // a non-zero result
