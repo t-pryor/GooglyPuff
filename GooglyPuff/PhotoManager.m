@@ -132,38 +132,75 @@
 
 - (void)downloadPhotosWithCompletionBlock:(BatchPhotoDownloadingCompletionBlock)completionBlock
 {
-    __block NSError *error;
+    // since you're using the synchronous dispatch_group_wait which blocks the current
+    // thread, you use dispatch_async to place the entire method into a background
+    // queue to ensure you don't block the main thread
     
-    for (NSInteger i = 0; i < 3; i++) {
-        NSURL *url;
-        switch (i) {
-            case 0:
-                url = [NSURL URLWithString:kOverlyAttachedGirlfriendURLString];
-                break;
-            case 1:
-                url = [NSURL URLWithString:kSuccessKidURLString];
-                break;
-            case 2:
-                url = [NSURL URLWithString:kLotsOfFacesURLString];
-                break;
-            default:
-                break;
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
+        __block NSError *error;
+        
+        // dispatch groups notify you when an entire group of tasks completes
+        // creates a new dispatch group which behaves like
+        // a counter of uncompleted tasks
+        
+        
+        dispatch_group_t downloadGroup = dispatch_group_create();
+    
+        for (NSInteger i = 0; i < 3; i++) {
+            NSURL *url;
+            switch (i) {
+                case 0:
+                    url = [NSURL URLWithString:kOverlyAttachedGirlfriendURLString];
+                    break;
+                case 1:
+                    url = [NSURL URLWithString:kSuccessKidURLString];
+                    break;
+                case 2:
+                    url = [NSURL URLWithString:kLotsOfFacesURLString];
+                    break;
+                default:
+                    break;
+            }
+        
+    
+            // this manually notifies the group that this work is done
+            // you're balancing you're dispatch_group_enter calls
+            // with the number of dispatch_group_leave calls
+            // enters during each iteration of the for loop
+            dispatch_group_enter(downloadGroup);
+            
+            
+            // this function is asynchronous and returns immediately
+            //
+            Photo *photo = [[Photo alloc] initwithURL:url
+                                withCompletionBlock:^(UIImage *image, NSError *_error) {
+                                    if (_error) {
+                                          error = _error;
+                                      }
+                                    dispatch_group_leave(downloadGroup);
+                                  }];
+        
+            [[PhotoManager sharedManager] addPhoto:photo];
+        
         }
-    
-        Photo *photo = [[Photo alloc] initwithURL:url
-                              withCompletionBlock:^(UIImage *image, NSError *_error) {
-                                  if (_error) {
-                                      error = _error;
-                                  }
-                              }];
-    
-        [[PhotoManager sharedManager] addPhoto:photo];
-    }
-    
-    if (completionBlock) {
-        completionBlock(error);
-    }
+        // Waits until either all the tasks are complete or until the time expires
+        // If time expires before all events complete, the function will return a
+        // a non-zero result
+        // if you reach this point, you've exited the for loop, so completion
+        // of the photos creation will always complete
+        dispatch_group_wait(downloadGroup, DISPATCH_TIME_FOREVER);
+        
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completionBlock) {
+                // completionBlock executes a UIAlert indicating that images have completed downloading
+                completionBlock(error);
+            }
+        });
+    });
+
 }
+
 
 //*****************************************************************************/
 #pragma mark - Private Methods
